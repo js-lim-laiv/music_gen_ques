@@ -2,14 +2,12 @@ import streamlit as st
 from io import BytesIO
 from docx import Document
 import random
-from transformers import pipeline
+import requests
 
-# LLM 모델 초기화 (한국어 특화 모델 사용)
-try:
-    text_generator = pipeline("text-generation", model="beomi/KoAlpaca-Polyglot-12.8B")
-    gpt_ready = True
-except:
-    gpt_ready = False
+# Hugging Face Inference API 설정
+HF_TOKEN = st.secrets["HF_TOKEN"]  # secrets.toml에 등록 필요
+API_URL = "https://api-inference.huggingface.co/models/beomi/KoAlpaca-Polyglot-5.8B"
+headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # Streamlit UI
 st.set_page_config(page_title="AI 음악 문항 생성기", layout="wide")
@@ -38,17 +36,19 @@ with col2:
     st.subheader("🧾 생성 결과")
     st.caption("아래는 실제 모델 기반으로 생성된 문항입니다.")
 
+    # 음원 재생 기능 추가
     if audio_file:
         st.audio(audio_file, format='audio/wav' if audio_file.name.endswith(".wav") else 'audio/mp3')
 
     def generate_llm_question(prompt):
-        if not gpt_ready:
-            return "⚠️ 모델이 준비되지 않아 예시 문항을 사용합니다."
         try:
-            result = text_generator(prompt, max_length=300, do_sample=True, temperature=0.8)[0]["generated_text"]
-            return result
+            response = requests.post(API_URL, headers=headers, json={"inputs": prompt})
+            if response.status_code == 200:
+                return response.json()[0]["generated_text"]
+            else:
+                return "⚠️ API 호출 실패: " + response.text
         except Exception as e:
-            return f"⚠️ LLM 생성 오류: {str(e)}"
+            return f"⚠️ LLM API 오류: {str(e)}"
 
     def rhythm_mock():
         return f"Q. 이 음원의 리듬 유형은 무엇인가요?\n정답: {random.choice(['왈츠', '보사노바', '펑크', '디스코'])}"
@@ -68,17 +68,10 @@ with col2:
 
     if generate:
         if "음악사" in question_type:
-            # 정답 유형 기반 프롬프트 설정
-            if answer_type == "O/X":
-                prompt = "고전 음악사와 관련된 O/X 문제를 한국어로 만들어줘. 질문과 정답(O 또는 X)을 명확하게 포함해줘."
-            elif "객관식" in answer_type:
-                prompt = ("고전 음악사 관련 객관식 문제를 한국어로 생성해줘. "
-                          "보기 A) B) C) D) 형식과 정답 표시도 포함해줘.")
-            elif "서술형" in answer_type:
-                prompt = "고전 음악사에 대한 서술형 문항을 생성해줘. 질문은 명확하게, 정답 예시는 한 문장으로."
-            else:
-                prompt = "고전 음악사 관련 문항을 생성해줘."
-
+            prompt = (
+                "한국어로 고전 음악사 객관식 문항을 만들어줘. 다음 형식을 따라줘:\n"
+                "Q. 질문 내용\nA) 보기1\nB) 보기2\nC) 보기3\nD) 보기4\n정답: B"
+            )
             result = generate_llm_question(prompt)
 
         elif "리듬" in question_type and audio_file:

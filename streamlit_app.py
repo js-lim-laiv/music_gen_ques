@@ -6,6 +6,7 @@ import librosa
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
+from transformers import pipeline
 
 # music21 악보 분석 (로컬에서만 시각화 가능)
 try:
@@ -20,6 +21,13 @@ try:
     rhythm_ready = True
 except:
     rhythm_ready = False
+
+# GPT2 모델 초기화 (한국어 지원)
+try:
+    text_generator = pipeline("text-generation", model="skt/kogpt2-base-v2", tokenizer="skt/kogpt2-base-v2", device=-1)
+    gpt_ready = True
+except:
+    gpt_ready = False
 
 # Streamlit UI
 st.set_page_config(page_title="AI 음악 문항 생성기", layout="wide")
@@ -48,11 +56,12 @@ with col2:
     st.subheader("🧾 생성 결과")
     st.caption("아래는 실제 모델 기반으로 생성된 문항입니다.")
 
-    def generate_mock_korean_question():
-        return (
-            "Q. 다음 중 고전주의 시대의 작곡가는 누구인가요?\n"
-            "A) 드뷔시\nB) 모차르트\nC) 말러\nD) 쇼팽\n정답: B"
-        )
+    def generate_gpt_question_kor():
+        if not gpt_ready:
+            return "GPT2 모델이 준비되지 않아 예시 문항을 사용합니다.\nQ. 다음 중 고전주의 시대의 작곡가는 누구인가요?\nA) 드뷔시\nB) 모차르트\nC) 말러\nD) 쇼팽\n정답: B"
+        prompt = "고전주의 시대 음악사에 대한 객관식 문항을 생성해줘."
+        result = text_generator(prompt, max_length=100, do_sample=True, num_return_sequences=1)[0]["generated_text"]
+        return result
 
     def classify_rhythm(file):
         try:
@@ -66,8 +75,7 @@ with col2:
                 label = rhythm_model.predict(feature)[0]
                 return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {label}"
             else:
-                label = random.choice(['왈츠', '보사노바', '펑크'])
-                return f"리듬 모델이 준비되지 않았습니다. 랜덤 리듬 사용.\n정답: {label}"
+                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {random.choice(['왈츠', '보사노바', '펑크'])}"
         except Exception as e:
             return f"오류 발생: {str(e)}"
 
@@ -84,24 +92,31 @@ with col2:
     def combine_all(text, audio, score):
         return (
             f"Q. 다음 곡에 대한 분석 결과로 보아 어떤 시대의 음악인가요?\n"
-            f"- 🎵 리듬 분석: {audio}\n"
-            f"- 🎼 조성 분석: {score}\n"
+            f"- 🎵 리듬 분석 결과: {audio}\n"
+            f"- 🎼 조성 분석 결과: {score}\n"
             f"- 📖 문헌 기반 정보: {text}\n"
             f"정답: 고전주의"
         )
 
     if generate:
         if "음악사" in question_type:
-            result = generate_mock_korean_question()
+            if answer_type == "O/X":
+                result = "Q. 다음 문장은 참인가요?\n\'모차르트는 고전주의 시대의 작곡가이다.\'\n정답: O"
+            else:
+                result = generate_gpt_question_kor()
+
         elif "리듬" in question_type and audio_file:
             result = classify_rhythm(audio_file)
+
         elif "악보" in question_type and score_file:
             result = analyze_score(score_file)
+
         elif "종합" in question_type:
-            text = generate_mock_korean_question()
+            text = generate_gpt_question_kor()
             audio = classify_rhythm(audio_file) if audio_file else "오디오 없음"
             score = analyze_score(score_file) if score_file else "악보 없음"
             result = combine_all(text, audio, score)
+
         else:
             result = "⚠️ 입력이 부족하거나 올바르지 않습니다."
 

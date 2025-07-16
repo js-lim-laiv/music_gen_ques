@@ -4,12 +4,12 @@ from docx import Document
 import random
 import requests
 
-# Hugging Face Inference API 설정
-HF_TOKEN = st.secrets["HF_TOKEN"]  # secrets.toml에 등록 필요
-API_URL = "https://api-inference.huggingface.co/models/beomi/KoAlpaca-Polyglot-5.8B"
+# ✅ Hugging Face Inference API 직접 입력 (PoC 단계용)
+HF_TOKEN = st.secrets["HF_TOKEN"]
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
-# Streamlit UI
+# Streamlit UI 설정
 st.set_page_config(page_title="AI 음악 문항 생성기", layout="wide")
 st.title("🎼 AI 기반 음악 문항 생성기 (PoC)")
 st.markdown("---")
@@ -36,7 +36,6 @@ with col2:
     st.subheader("🧾 생성 결과")
     st.caption("아래는 실제 모델 기반으로 생성된 문항입니다.")
 
-    # 음원 재생 기능 추가
     if audio_file:
         st.audio(audio_file, format='audio/wav' if audio_file.name.endswith(".wav") else 'audio/mp3')
 
@@ -69,7 +68,7 @@ with col2:
     if generate:
         if "음악사" in question_type:
             prompt = (
-                "한국어로 고전 음악사 객관식 문항을 만들어줘. 다음 형식을 따라줘:\n"
+                "다음 형식으로 한국어 음악사 객관식 문항을 생성해줘:\n"
                 "Q. 질문 내용\nA) 보기1\nB) 보기2\nC) 보기3\nD) 보기4\n정답: B"
             )
             result = generate_llm_question(prompt)

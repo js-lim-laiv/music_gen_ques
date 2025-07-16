@@ -1,9 +1,4 @@
 streamlit
 python-docx
-librosa
-matplotlib
-soundfile
-joblib
 transformers
 torch
-music21

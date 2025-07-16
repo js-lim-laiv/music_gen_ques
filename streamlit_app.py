@@ -64,8 +64,7 @@ with col2:
             feature = mfcc.mean(axis=1).reshape(1, -1)
             if rhythm_ready:
                 label = rhythm_model.predict(feature)[0]
-                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?
-정답: {label}"
+                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {label}"
             else:
                 return f"리듬 모델이 준비되지 않았습니다. 랜덤 리듬 사용.
 정답: {random.choice(['왈츠', '보사노바', '펑크'])}"

@@ -56,16 +56,21 @@ with col2:
 
     def classify_rhythm(file):
         try:
-            import soundfile as sf
+            import tempfile
             file_bytes = file.read()
-            y, sr = sf.read(BytesIO(file_bytes)) if file.name.endswith('mp3') else librosa.load(BytesIO(file_bytes), sr=22050)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file.name[-4:]) as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
+            y, sr = librosa.load(tmp_path, sr=22050)
             mfcc = librosa.feature.mfcc(y=y, sr=sr)
             feature = mfcc.mean(axis=1).reshape(1, -1)
             if rhythm_ready:
                 label = rhythm_model.predict(feature)[0]
-                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {label}"
+                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?
+정답: {label}"
             else:
-                return f"리듬 모델이 준비되지 않았습니다. 랜덤 리듬 사용.\n정답: {random.choice(['왈츠', '보사노바', '펑크'])}"
+                return f"리듬 모델이 준비되지 않았습니다. 랜덤 리듬 사용.
+정답: {random.choice(['왈츠', '보사노바', '펑크'])}"
         except Exception as e:
             return f"오류 발생: {str(e)}"
 

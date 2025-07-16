@@ -66,8 +66,8 @@ with col2:
                 label = rhythm_model.predict(feature)[0]
                 return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {label}"
             else:
-                return f"리듬 모델이 준비되지 않았습니다. 랜덤 리듬 사용.
-정답: {random.choice(['왈츠', '보사노바', '펑크'])}"
+                label = random.choice(['왈츠', '보사노바', '펑크'])
+                return f"리듬 모델이 준비되지 않았습니다. 랜덤 리듬 사용.\n정답: {label}"
         except Exception as e:
             return f"오류 발생: {str(e)}"
 

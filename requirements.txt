@@ -1,9 +1,8 @@
 streamlit
 python-docx
-transformers
-torch
 librosa
+scikit-learn
+joblib
+matplotlib
 music21
-pysoundfile
-ffmpeg
 audioread

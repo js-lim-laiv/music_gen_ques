@@ -6,3 +6,5 @@ joblib
 matplotlib
 music21
 audioread
+transformers
+torch

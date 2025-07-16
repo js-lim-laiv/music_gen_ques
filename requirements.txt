@@ -1,10 +1,9 @@
 streamlit
-python-docx
+docx
 librosa
-scikit-learn
-joblib
+numpy
 matplotlib
+soundfile
+joblib
 music21
-audioread
-transformers
-torch
+python-docx

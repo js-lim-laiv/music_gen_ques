@@ -40,7 +40,7 @@ with col1:
     st.subheader("2️⃣ 정답 유형")
     answer_type = st.selectbox("정답 유형", ["O/X", "객관식 (텍스트)", "악보형 보기", "서술형"])
 
-    audio_file = st.file_uploader("🎵 오디오 업로드 (wav)", type=["wav"])
+    audio_file = st.file_uploader("🎵 오디오 업로드 (wav, mp3)", type=["wav", "mp3"])
     score_file = st.file_uploader("🎼 악보 업로드 (musicxml)", type=["xml", "musicxml"])
     generate = st.button("✨ 문항 생성하기")
 
@@ -56,7 +56,9 @@ with col2:
 
     def classify_rhythm(file):
         try:
-            y, sr = librosa.load(file, sr=22050)
+            import soundfile as sf
+            file_bytes = file.read()
+            y, sr = sf.read(BytesIO(file_bytes)) if file.name.endswith('mp3') else librosa.load(BytesIO(file_bytes), sr=22050)
             mfcc = librosa.feature.mfcc(y=y, sr=sr)
             feature = mfcc.mean(axis=1).reshape(1, -1)
             if rhythm_ready:

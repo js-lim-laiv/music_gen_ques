@@ -6,7 +6,7 @@ import requests
 
 # Hugging Face Inference API 설정
 HF_TOKEN = st.secrets["HF_TOKEN"]  # secrets.toml에 등록 필요
-API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"
+API_URL = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
 headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # Streamlit UI

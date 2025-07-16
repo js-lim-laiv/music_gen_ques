@@ -1,2 +1,6 @@
 streamlit
 python-docx
+transformers
+torch
+librosa
+music21

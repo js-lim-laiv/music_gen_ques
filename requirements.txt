@@ -7,3 +7,4 @@ soundfile
 joblib
 music21
 python-docx
+transformer

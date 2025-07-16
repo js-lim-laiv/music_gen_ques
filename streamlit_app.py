@@ -2,29 +2,11 @@ import streamlit as st
 from io import BytesIO
 from docx import Document
 import random
-import librosa
-import numpy as np
-import joblib
-import matplotlib.pyplot as plt
 from transformers import pipeline
 
-# music21 악보 분석 (로컬에서만 시각화 가능)
+# LLM 모델 초기화 (한국어 또는 다국어 지원 모델 사용)
 try:
-    from music21 import converter
-    music21_available = True
-except ImportError:
-    music21_available = False
-
-# Rhythm classifier model 로드
-try:
-    rhythm_model = joblib.load("rhythm_svm.pkl")
-    rhythm_ready = True
-except:
-    rhythm_ready = False
-
-# GPT2 모델 초기화 (한국어 지원)
-try:
-    text_generator = pipeline("text-generation", model="skt/kogpt2-base-v2", tokenizer="skt/kogpt2-base-v2", device=-1)
+    text_generator = pipeline("text-generation", model="mistralai/Mixtral-8x7B-Instruct-v0.1")
     gpt_ready = True
 except:
     gpt_ready = False
@@ -39,16 +21,16 @@ col1, col2 = st.columns([1, 3])
 with col1:
     st.subheader("1️⃣ 생성할 문항 유형")
     question_type = st.selectbox("문항 유형", [
-        "유형 1: 음악사 (GPT2 기반 모의)",
-        "유형 2: 리듬/화성 (오디오 분석)",
-        "유형 3: 악보 평가 (조성 분석)",
+        "유형 1: 음악사 (LLM 기반 실생성)",
+        "유형 2: 리듬/화성 (파일 기반 모의 생성)",
+        "유형 3: 악보 평가 (파일명 기반 문항 생성)",
         "유형 4: 종합 평가"
     ])
 
     st.subheader("2️⃣ 정답 유형")
     answer_type = st.selectbox("정답 유형", ["O/X", "객관식 (텍스트)", "악보형 보기", "서술형"])
 
-    audio_file = st.file_uploader("🎵 오디오 업로드 (wav)", type=["wav"])
+    audio_file = st.file_uploader("🎵 오디오 업로드 (wav/mp3)", type=["wav", "mp3"])
     score_file = st.file_uploader("🎼 악보 업로드 (musicxml)", type=["xml", "musicxml"])
     generate = st.button("✨ 문항 생성하기")
 
@@ -56,42 +38,25 @@ with col2:
     st.subheader("🧾 생성 결과")
     st.caption("아래는 실제 모델 기반으로 생성된 문항입니다.")
 
-    def generate_gpt_question_kor():
+    def generate_llm_question(prompt):
         if not gpt_ready:
-            return "GPT2 모델이 준비되지 않아 예시 문항을 사용합니다.\nQ. 다음 중 고전주의 시대의 작곡가는 누구인가요?\nA) 드뷔시\nB) 모차르트\nC) 말러\nD) 쇼팽\n정답: B"
-        prompt = "고전주의 시대 음악사에 대한 객관식 문항을 생성해줘."
-        result = text_generator(prompt, max_length=100, do_sample=True, num_return_sequences=1)[0]["generated_text"]
-        return result
-
-    def classify_rhythm(file):
+            return "⚠️ 모델이 준비되지 않아 예시 문항을 사용합니다."
         try:
-            file_bytes = file.read()
-            import soundfile as sf
-            import io
-            y, sr = sf.read(io.BytesIO(file_bytes))
-            mfcc = librosa.feature.mfcc(y=y, sr=sr)
-            feature = mfcc.mean(axis=1).reshape(1, -1)
-            if rhythm_ready:
-                label = rhythm_model.predict(feature)[0]
-                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {label}"
-            else:
-                return f"Q. 업로드된 음원의 리듬 유형은 무엇인가요?\n정답: {random.choice(['왈츠', '보사노바', '펑크'])}"
+            result = text_generator(prompt, max_length=200, do_sample=True, temperature=0.8)[0]["generated_text"]
+            return result
         except Exception as e:
-            return f"오류 발생: {str(e)}"
+            return f"⚠️ LLM 생성 오류: {str(e)}"
 
-    def analyze_score(file):
-        if not music21_available:
-            return "music21이 설치되어 있지 않아 악보 분석이 불가합니다."
-        try:
-            score = converter.parse(file)
-            key = score.analyze('key')
-            return f"Q. 이 악보의 조성(Key)은 무엇인가요?\n정답: {key}"
-        except Exception as e:
-            return f"악보 분석 오류: {e}"
+    def rhythm_mock():
+        return f"Q. 이 음원의 리듬 유형은 무엇인가요?\n정답: {random.choice(['왈츠', '보사노바', '펑크', '디스코'])}"
+
+    def score_mock(filename):
+        name = filename.name.replace(".musicxml", "").replace(".xml", "")
+        return f"Q. 악보 '{name}'은 어떤 조성을 기반으로 만들어졌을까요?\n정답: {random.choice(['다장조', '가단조', '바장조'])}"
 
     def combine_all(text, audio, score):
         return (
-            f"Q. 다음 곡에 대한 분석 결과로 보아 어떤 시대의 음악인가요?\n"
+            f"Q. 다음 곡에 대한 분석 결과로 어떤 시대의 음악일까요?\n"
             f"- 🎵 리듬 분석 결과: {audio}\n"
             f"- 🎼 조성 분석 결과: {score}\n"
             f"- 📖 문헌 기반 정보: {text}\n"
@@ -100,21 +65,19 @@ with col2:
 
     if generate:
         if "음악사" in question_type:
-            if answer_type == "O/X":
-                result = "Q. 다음 문장은 참인가요?\n\'모차르트는 고전주의 시대의 작곡가이다.\'\n정답: O"
-            else:
-                result = generate_gpt_question_kor()
+            prompt = "고전 음악사 관련 객관식 문항을 한국어로 생성해줘. 보기와 정답도 포함해줘."
+            result = generate_llm_question(prompt)
 
         elif "리듬" in question_type and audio_file:
-            result = classify_rhythm(audio_file)
+            result = rhythm_mock()
 
         elif "악보" in question_type and score_file:
-            result = analyze_score(score_file)
+            result = score_mock(score_file)
 
         elif "종합" in question_type:
-            text = generate_gpt_question_kor()
-            audio = classify_rhythm(audio_file) if audio_file else "오디오 없음"
-            score = analyze_score(score_file) if score_file else "악보 없음"
+            text = generate_llm_question("음악사 관련 설명을 생성해줘. 한 문단 정도로.")
+            audio = rhythm_mock() if audio_file else "오디오 없음"
+            score = score_mock(score_file) if score_file else "악보 없음"
             result = combine_all(text, audio, score)
 
         else:

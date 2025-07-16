@@ -38,6 +38,10 @@ with col2:
     st.subheader("🧾 생성 결과")
     st.caption("아래는 실제 모델 기반으로 생성된 문항입니다.")
 
+    # 음원 재생 기능 추가
+    if audio_file:
+        st.audio(audio_file, format='audio/wav' if audio_file.name.endswith(".wav") else 'audio/mp3')
+
     def generate_llm_question(prompt):
         if not gpt_ready:
             return "⚠️ 모델이 준비되지 않아 예시 문항을 사용합니다."
